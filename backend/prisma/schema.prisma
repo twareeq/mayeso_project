@@ -1,0 +1,308 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── USERS ───────────────────────────────────────────────────
+
+model User {
+  id          String   @id @default(uuid())
+  fullName    String
+  email       String   @unique
+  password    String                        // bcrypt hashed
+  role        Role     @default(TEACHER)
+  phoneNumber String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  school              School?          @relation(fields: [schoolId], references: [id])
+  schoolId            String?
+  responsibleClass    Class?           @relation("ClassTeacher")
+  teacherSubjects     TeacherSubject[]
+  createdStudents     Student[]        @relation("CreatedBy")
+  enteredMarks        Mark[]           @relation("MarksEnteredBy")
+
+  @@map("users")
+}
+
+enum Role {
+  ADMIN
+  HEAD_TEACHER
+  TEACHER
+}
+
+// ─── ZONE ────────────────────────────────────────────────────
+
+model Zone {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  region    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  schools   School[]
+
+  @@map("zones")
+}
+
+// ─── SCHOOL ──────────────────────────────────────────────────
+
+model School {
+  id        String   @id @default(uuid())
+  name      String
+  address   String?
+  phone     String?
+  email     String?
+  logoUrl   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  zone      Zone     @relation(fields: [zoneId], references: [id])
+  zoneId    String
+
+  users     User[]
+  levels    Level[]
+
+  @@map("schools")
+}
+
+// ─── LEVEL ───────────────────────────────────────────────────
+
+model Level {
+  id        String    @id @default(uuid())
+  name      String                          // "Low Level" or "Senior Level"
+  type      LevelType
+  createdAt DateTime  @default(now())
+
+  school    School    @relation(fields: [schoolId], references: [id])
+  schoolId  String
+
+  classes   Class[]
+
+  @@map("levels")
+}
+
+enum LevelType {
+  LOW     // Standard 4, 5, 6
+  SENIOR  // Standard 7, 8
+}
+
+// ─── ACADEMIC YEAR ───────────────────────────────────────────
+
+model AcademicYear {
+  id        String   @id @default(uuid())
+  year      String   @unique              // e.g. "2025"
+  isCurrent Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  terms     Term[]
+
+  @@map("academic_years")
+}
+
+// ─── TERM ────────────────────────────────────────────────────
+
+model Term {
+  id          String       @id @default(uuid())
+  termNumber  Int                               // 1, 2, or 3
+  startDate   DateTime
+  endDate     DateTime
+  isCurrent   Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+
+  academicYear  AcademicYear @relation(fields: [academicYearId], references: [id])
+  academicYearId String
+
+  marks         Mark[]
+  studentResults StudentResult[]
+
+  @@unique([academicYearId, termNumber])
+  @@map("terms")
+}
+
+// ─── CLASS ───────────────────────────────────────────────────
+
+model Class {
+  id             String   @id @default(uuid())
+  name           String                          // e.g. "Standard 8B"
+  standardNumber Int                             // 4, 5, 6, 7, or 8
+  stream         String?                         // "A", "B", "C"
+  academicYear   String                          // "2025"
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  level          Level    @relation(fields: [levelId], references: [id])
+  levelId        String
+
+  responsibleTeacher   User?   @relation("ClassTeacher", fields: [responsibleTeacherId], references: [id])
+  responsibleTeacherId String? @unique
+
+  students       Student[]
+  subjects       Subject[]
+
+  @@map("classes")
+}
+
+// ─── SUBJECT ─────────────────────────────────────────────────
+
+model Subject {
+  id        String   @id @default(uuid())
+  name      String                             // e.g. "Mathematics"
+  code      String                             // e.g. "MTH"
+  createdAt DateTime @default(now())
+
+  class     Class    @relation(fields: [classId], references: [id])
+  classId   String
+
+  teachers  TeacherSubject[]
+  marks     Mark[]
+
+  @@unique([classId, code])
+  @@map("subjects")
+}
+
+// ─── TEACHER ↔ SUBJECT ASSIGNMENT ────────────────────────────
+
+model TeacherSubject {
+  id          String   @id @default(uuid())
+  assignedAt  DateTime @default(now())
+
+  teacher     User     @relation(fields: [teacherId], references: [id])
+  teacherId   String
+
+  subject     Subject  @relation(fields: [subjectId], references: [id])
+  subjectId   String
+
+  @@unique([teacherId, subjectId])
+  @@map("teacher_subjects")
+}
+
+// ─── STUDENT ─────────────────────────────────────────────────
+
+model Student {
+  id              String         @id @default(uuid())
+  admissionNumber String         @unique           // auto-generated: SCH-YEAR-SEQUENCE
+  firstName       String
+  lastName        String
+  gender          Gender
+  dateOfBirth     DateTime?
+  parentName      String?
+  parentPhone     String?
+  status          StudentStatus  @default(ACTIVE)
+  enrolledAt      DateTime       @default(now())
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  class           Class          @relation(fields: [classId], references: [id])
+  classId         String
+
+  createdBy       User           @relation("CreatedBy", fields: [createdById], references: [id])
+  createdById     String
+
+  marks           Mark[]
+  results         StudentResult[]
+
+  @@map("students")
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum StudentStatus {
+  ACTIVE
+  PROMOTED
+  REPEATING
+  TRANSFERRED
+  ARCHIVED
+}
+
+// ─── MARK ────────────────────────────────────────────────────
+
+model Mark {
+  id               String   @id @default(uuid())
+  markType         MarkType
+  assessmentNumber Int?                            // 1–6 for ASSESSMENT type, null for END_OF_TERM
+  score            Float                           // 0–5 for ASSESSMENT, 0–70 for END_OF_TERM
+  maxScore         Float                           // always 5 for ASSESSMENT, 70 for END_OF_TERM
+  isDraft          Boolean  @default(true)         // teacher saves draft before finalizing
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  student          Student  @relation(fields: [studentId], references: [id])
+  studentId        String
+
+  subject          Subject  @relation(fields: [subjectId], references: [id])
+  subjectId        String
+
+  term             Term     @relation(fields: [termId], references: [id])
+  termId           String
+
+  enteredBy        User     @relation("MarksEnteredBy", fields: [enteredById], references: [id])
+  enteredById      String
+
+  @@unique([studentId, subjectId, termId, markType, assessmentNumber])
+  @@map("marks")
+}
+
+enum MarkType {
+  ASSESSMENT
+  END_OF_TERM
+}
+
+// ─── STUDENT RESULT (computed per term) ──────────────────────
+
+model StudentResult {
+  id                String    @id @default(uuid())
+  totalScore        Float                           // overall percentage 0–100
+  overallGrade      String?                         // Excellent / Very Good / Good / Need Support
+  isPassing         Boolean   @default(false)       // totalScore >= 50
+  promotionStatus   String?                         // "Promoted" | "Repeating"
+  teacherRemarks    String?
+  isFinalized       Boolean   @default(false)
+  finalizedAt       DateTime?
+  lastComputedAt    DateTime  @default(now())
+  createdAt         DateTime  @default(now())
+
+  student           Student   @relation(fields: [studentId], references: [id])
+  studentId         String
+
+  term              Term      @relation(fields: [termId], references: [id])
+  termId            String
+
+  subjectResults    SubjectResult[]
+
+  @@unique([studentId, termId])
+  @@map("student_results")
+}
+
+// ─── SUBJECT RESULT (per subject per term) ───────────────────
+
+model SubjectResult {
+  id               String  @id @default(uuid())
+  subjectName      String
+  subjectCode      String
+
+  assessment1      Float?
+  assessment2      Float?
+  assessment3      Float?
+  assessment4      Float?
+  assessment5      Float?
+  assessment6      Float?
+  assessmentTotal  Float   @default(0)    // max 30
+  endOfTermScore   Float?                 // max 70
+  subjectTotal     Float   @default(0)    // max 100
+  subjectGrade     String?
+
+  studentResult    StudentResult @relation(fields: [studentResultId], references: [id])
+  studentResultId  String
+
+  @@map("subject_results")
+}
