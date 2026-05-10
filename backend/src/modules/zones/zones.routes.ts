@@ -27,7 +27,7 @@ router.post('/', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    const zoneId = req.params.id;
+    const zoneId = req.params.id as string;
     const schoolsCount = await prisma.school.count({ where: { zoneId } });
     
     if (schoolsCount > 0) {

@@ -36,6 +36,8 @@ export function Sidebar() {
     { name: 'Levels', href: '/levels', icon: Layers },
     { name: 'Classes', href: '/classes', icon: Users },
     { name: 'Subjects', href: '/subjects', icon: BookOpen },
+    { name: 'Students', href: '/students', icon: GraduationCap },
+    { name: 'Results', href: '/results', icon: ClipboardList },
     { name: 'Users', href: '/users', icon: Users },
     { name: 'Settings', href: '/settings', icon: Settings },
   ];
@@ -52,6 +54,7 @@ export function Sidebar() {
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'My Classes', href: '/classes', icon: Users },
     { name: 'Enter Marks', href: '/marks', icon: ClipboardList },
+    { name: 'Results', href: '/results', icon: ClipboardList },
     { name: 'Reports', href: '/reports', icon: FileText },
   ];
 

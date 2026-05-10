@@ -7,10 +7,18 @@ import bcrypt from 'bcrypt';
 const router = Router();
 
 router.use(authenticate);
-router.use(requireRole(['ADMIN']));
+router.use(requireRole(['ADMIN', 'HEAD_TEACHER']));
 
 router.get('/', async (req, res) => {
+  const user = (req as any).user;
+  const where: any = {};
+  
+  if (user.role === 'HEAD_TEACHER') {
+    where.schoolId = user.schoolId;
+  }
+
   const users = await prisma.user.findMany({
+    where,
     include: { school: true }
   });
   res.json(users);

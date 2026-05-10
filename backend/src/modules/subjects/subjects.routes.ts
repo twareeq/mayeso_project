@@ -6,7 +6,16 @@ const router = Router();
 router.use(authenticate);
 
 router.get('/', async (req, res) => {
-  const subjects = await prisma.subject.findMany({ include: { class: true } });
+  const user = (req as any).user;
+  const { classId, mySubjects } = req.query;
+
+  const where: any = {};
+  if (classId) where.classId = classId as string;
+  if (mySubjects === 'true' && user.role === 'TEACHER') {
+    where.teachers = { some: { teacherId: user.id } };
+  }
+
+  const subjects = await prisma.subject.findMany({ where });
   res.json(subjects);
 });
 

@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Search, Plus, Users, School, Edit2, Trash2, Loader2, BookOpen } from "lucide-react";
+import { Search, Plus, Users, School, Edit2, Trash2, Loader2, BookOpen, UserPlus } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function ClassesPage() {
@@ -205,8 +205,13 @@ export default function ClassesPage() {
                 </TableCell>
                 <TableCell className="text-right px-6">
                   <div className="flex justify-end gap-2">
+                    <Link href={`/students/new?classId=${cls.id}`}>
+                      <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg hover:bg-emerald-50 text-emerald-500 transition-all" title="Enroll Student">
+                        <UserPlus className="h-4 w-4" />
+                      </Button>
+                    </Link>
                     <Link href={`/classes/${cls.id}`}>
-                      <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg hover:bg-white hover:shadow-md text-slate-400 hover:text-primary transition-all">
+                      <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg hover:bg-white hover:shadow-md text-slate-400 hover:text-primary transition-all" title="Edit Class">
                         <Edit2 className="h-4 w-4" />
                       </Button>
                     </Link>

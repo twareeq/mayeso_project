@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import api from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +25,7 @@ export default function MarksEntryPage() {
   
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [completionData, setCompletionData] = useState<any[]>([]);
 
   useEffect(() => {
     fetchInitialData();
@@ -32,6 +34,7 @@ export default function MarksEntryPage() {
   useEffect(() => {
     if (selectedClass) {
       fetchStudents(selectedClass);
+      fetchSubjects(selectedClass);
     }
   }, [selectedClass]);
 
@@ -41,16 +44,29 @@ export default function MarksEntryPage() {
     }
   }, [selectedStudent, selectedTerm, selectedSubject]);
 
+  useEffect(() => {
+    if (selectedClass && selectedSubject && selectedTerm) {
+      fetchCompletionStatus();
+    }
+  }, [selectedClass, selectedSubject, selectedTerm]);
+
+  const fetchCompletionStatus = async () => {
+    try {
+      const res = await api.get(`/marks/completion?classId=${selectedClass}&subjectId=${selectedSubject}&termId=${selectedTerm}`);
+      setCompletionData(res.data);
+    } catch (error) {
+      console.error("Failed to fetch completion status", error);
+    }
+  };
+
   const fetchInitialData = async () => {
     try {
       setIsLoading(true);
-      const [classesRes, subjectsRes, termsRes] = await Promise.all([
-        api.get('/classes'),
-        api.get('/subjects'),
+      const [classesRes, termsRes] = await Promise.all([
+        api.get('/classes?myClasses=true'),
         api.get('/terms')
       ]);
       setClasses(classesRes.data);
-      setSubjects(subjectsRes.data);
       setTerms(termsRes.data);
       
       if (termsRes.data.length > 0) setSelectedTerm(termsRes.data[0].id);
@@ -58,6 +74,15 @@ export default function MarksEntryPage() {
       console.error("Failed to fetch initial data", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchSubjects = async (classId: string) => {
+    try {
+      const response = await api.get(`/subjects?classId=${classId}&mySubjects=true`);
+      setSubjects(response.data);
+    } catch (error) {
+      console.error("Failed to fetch subjects", error);
     }
   };
 
@@ -102,8 +127,25 @@ export default function MarksEntryPage() {
       setIsSaving(true);
       await api.post(endpoint, payload);
       fetchExistingMarks();
+      fetchCompletionStatus();
     } catch (error) {
       console.error("Failed to save mark", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleFinalize = async () => {
+    if (!selectedStudent || !selectedTerm) return;
+    try {
+      setIsSaving(true);
+      await api.post('/marks/finalize', {
+        studentId: selectedStudent.id,
+        termId: selectedTerm
+      });
+      alert('Marks finalized successfully!');
+    } catch (err) {
+      console.error('Finalize failed', err);
     } finally {
       setIsSaving(false);
     }
@@ -129,7 +171,11 @@ export default function MarksEntryPage() {
               <SelectValue placeholder="Select Term" />
             </SelectTrigger>
             <SelectContent className="rounded-xl">
-              {terms.map(t => <SelectItem key={t.id} value={t.id}>{t.name} ({t.academicYear?.name})</SelectItem>)}
+              {terms.map(t => (
+                <SelectItem key={t.id} value={t.id}>
+                  Term {t.termNumber} — {t.academicYear?.year}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -164,19 +210,28 @@ export default function MarksEntryPage() {
             <span>Students ({students.length})</span>
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-2">
-            {students.map(s => (
-              <div 
-                key={s.id} 
-                className={`p-4 rounded-2xl cursor-pointer transition-all duration-200 flex justify-between items-center group ${selectedStudent?.id === s.id ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'hover:bg-slate-50 text-slate-600'}`}
-                onClick={() => setSelectedStudent(s)}
-              >
-                <div>
-                  <div className="font-bold">{s.fullName}</div>
-                  <div className={`text-[10px] uppercase font-bold tracking-widest ${selectedStudent?.id === s.id ? 'text-white/60' : 'text-slate-400'}`}>{s.admissionNumber}</div>
+            {students.map(s => {
+              const completion = completionData.find(c => c.studentId === s.id);
+              const colorClass = completion?.isComplete 
+                ? 'bg-emerald-500' 
+                : (completion?.assessmentsEntered > 0 || completion?.endOfTermEntered) 
+                  ? 'bg-amber-500' 
+                  : 'bg-slate-200';
+
+              return (
+                <div 
+                  key={s.id} 
+                  className={`p-4 rounded-2xl cursor-pointer transition-all duration-200 flex justify-between items-center group ${selectedStudent?.id === s.id ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'hover:bg-slate-50 text-slate-600'}`}
+                  onClick={() => setSelectedStudent(s)}
+                >
+                  <div>
+                    <div className="font-bold">{s.firstName} {s.lastName}</div>
+                    <div className={`text-[10px] uppercase font-bold tracking-widest ${selectedStudent?.id === s.id ? 'text-white/60' : 'text-slate-400'}`}>{s.admissionNumber}</div>
+                  </div>
+                  <div className={`h-2 w-2 rounded-full ${selectedStudent?.id === s.id ? 'bg-white' : colorClass}`} />
                 </div>
-                <div className={`h-2 w-2 rounded-full ${selectedStudent?.id === s.id ? 'bg-white' : 'bg-slate-200'}`} />
-              </div>
-            ))}
+              );
+            })}
             {students.length === 0 && <div className="text-center py-10 text-slate-400 italic">Select a class first</div>}
           </div>
         </div>
@@ -187,7 +242,7 @@ export default function MarksEntryPage() {
             <div className="space-y-10 animate-in slide-in-from-right duration-500">
               <div className="flex justify-between items-start border-b border-slate-50 pb-8">
                 <div>
-                  <h2 className="text-3xl font-black text-slate-900">{selectedStudent.fullName}</h2>
+                  <h2 className="text-3xl font-black text-slate-900">{selectedStudent.firstName} {selectedStudent.lastName}</h2>
                   <p className="text-slate-500 font-medium mt-1">Student ID: {selectedStudent.admissionNumber} | Standard {selectedStudent.class?.name}</p>
                 </div>
                 <Badge className="bg-primary/10 text-primary border-none text-sm px-4 py-1.5 rounded-full font-bold">
@@ -271,11 +326,21 @@ export default function MarksEntryPage() {
                     </div>
                   </div>
                   <div className="flex gap-4">
+                    {selectedStudent && selectedTerm && (
+                      <Link href={`/results/${selectedStudent.id}?termId=${selectedTerm}`}>
+                        <Button variant="outline" className="h-14 px-8 rounded-2xl font-bold border-slate-200 hover:bg-slate-50">
+                          View Result Sheet →
+                        </Button>
+                      </Link>
+                    )}
                     <Button variant="outline" className="h-14 px-8 rounded-2xl font-bold border-slate-200 hover:bg-slate-50">
                       <Save className="mr-2 h-5 w-5" /> Save Draft
                     </Button>
-                    <Button className="h-14 px-8 rounded-2xl font-bold bg-primary shadow-xl shadow-primary/20">
-                      <CheckCircle2 className="mr-2 h-5 w-5" /> Finalize Marks
+                    <Button onClick={handleFinalize} disabled={isSaving} className="h-14 px-8 rounded-2xl font-bold bg-primary shadow-xl shadow-primary/20">
+                      {isSaving
+                        ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Finalizing...</>
+                        : <><CheckCircle2 className="mr-2 h-5 w-5" /> Finalize Marks</>
+                      }
                     </Button>
                   </div>
                 </div>

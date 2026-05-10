@@ -31,7 +31,7 @@ export default function StudentsPage() {
   };
 
   const filteredStudents = students.filter(s => 
-    s.fullName.toLowerCase().includes(search.toLowerCase()) || 
+    `${s.firstName} ${s.lastName}`.toLowerCase().includes(search.toLowerCase()) || 
     s.admissionNumber.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -96,7 +96,7 @@ export default function StudentsPage() {
                         <User className="h-5 w-5" />
                       )}
                     </div>
-                    <span className="font-bold text-slate-900">{student.fullName}</span>
+                    <span className="font-bold text-slate-900">{student.firstName} {student.lastName}</span>
                   </div>
                 </TableCell>
                 <TableCell>
