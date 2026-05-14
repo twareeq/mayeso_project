@@ -41,9 +41,25 @@ export default function ReportsPage() {
     if (!selectedTerm || !selectedClass) return;
     try {
       setIsGenerating(true);
-      // In a real scenario, this would trigger a batch PDF download
-      // For now we'll simulate the download from the student-results endpoint
-      window.open(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1'}/reports/class/${selectedClass}/term/${selectedTerm}`, '_blank');
+      
+      const response = await api.get(`/reports/class/${selectedClass}/term/${selectedTerm}`, {
+        responseType: 'blob', // Expect binary data for PDF
+      });
+      
+      // Create a Blob from the PDF Stream
+      const file = new Blob([response.data], { type: 'application/pdf' });
+      const fileURL = URL.createObjectURL(file);
+      
+      // Create a temporary link element to trigger the download
+      const downloadLink = document.createElement('a');
+      downloadLink.href = fileURL;
+      downloadLink.download = `class_reports_${selectedClass}.pdf`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      
+      // Clean up
+      document.body.removeChild(downloadLink);
+      URL.revokeObjectURL(fileURL);
     } catch (error) {
       console.error("Failed to generate reports", error);
     } finally {
