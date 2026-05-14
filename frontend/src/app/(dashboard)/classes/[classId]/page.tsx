@@ -51,8 +51,8 @@ export default function EditClassPage() {
       
       setFormData({
         name: classData.name,
-        standard: classData.standard.toString(),
-        stream: classData.stream || "",
+        standard: classData.standard ? classData.standard.toString() : "1",
+        stream: classData.stream || "None",
         levelId: classData.levelId,
         responsibleTeacherId: classData.responsibleTeacherId || "unassigned"
       });
@@ -62,6 +62,17 @@ export default function EditClassPage() {
       setIsLoading(false);
     }
   };
+
+  // Auto-compute display name when standard or stream changes
+  useEffect(() => {
+    if (formData.standard) {
+      const streamStr = formData.stream && formData.stream !== "None" ? formData.stream : "";
+      setFormData(prev => ({
+        ...prev,
+        name: `Standard ${formData.standard}${streamStr}`
+      }));
+    }
+  }, [formData.standard, formData.stream]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,31 +122,37 @@ export default function EditClassPage() {
             <CardContent className="px-8 pb-8 space-y-6">
               <div className="space-y-2">
                 <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Display Name</Label>
-                <Input 
-                  required 
-                  className="h-12 rounded-xl border-slate-200" 
-                  value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
-                />
+                <div className="h-12 rounded-xl border border-slate-200 bg-slate-50 flex items-center px-4 text-slate-700 font-medium">
+                  {formData.name || "Auto-generated"}
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Standard</Label>
-                  <Input 
-                    type="number"
-                    required 
-                    className="h-12 rounded-xl border-slate-200" 
-                    value={formData.standard}
-                    onChange={(e) => setFormData({...formData, standard: e.target.value})}
-                  />
+                  <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Class (Standard)</Label>
+                  <Select value={formData.standard} onValueChange={(v) => setFormData({...formData, standard: v})}>
+                    <SelectTrigger className="h-12 rounded-xl border-slate-200">
+                      <SelectValue placeholder="Select Standard" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      {[1, 2, 3, 4, 5, 6, 7, 8].map(std => (
+                        <SelectItem key={std} value={std.toString()}>Standard {std}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Stream</Label>
-                  <Input 
-                    className="h-12 rounded-xl border-slate-200" 
-                    value={formData.stream}
-                    onChange={(e) => setFormData({...formData, stream: e.target.value})}
-                  />
+                  <Select value={formData.stream} onValueChange={(v) => setFormData({...formData, stream: v})}>
+                    <SelectTrigger className="h-12 rounded-xl border-slate-200">
+                      <SelectValue placeholder="Select Stream" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      <SelectItem value="None">None</SelectItem>
+                      {["A", "B", "C", "D", "E"].map(stream => (
+                        <SelectItem key={stream} value={stream}>Stream {stream}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="space-y-2">

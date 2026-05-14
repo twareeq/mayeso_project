@@ -19,11 +19,22 @@ export default function ClassesPage() {
   const [search, setSearch] = useState("");
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [newClass, setNewClass] = useState({
-    name: "",
-    standard: "",
-    stream: "",
+    name: "Standard 1",
+    standard: "1",
+    stream: "None",
     levelId: ""
   });
+
+  // Auto-update name when standard/stream changes in the creation form
+  useEffect(() => {
+    if (newClass.standard) {
+      const streamStr = newClass.stream && newClass.stream !== "None" ? newClass.stream : "";
+      setNewClass(prev => ({
+        ...prev,
+        name: `Standard ${newClass.standard}${streamStr}`
+      }));
+    }
+  }, [newClass.standard, newClass.stream]);
 
   useEffect(() => {
     fetchData();
@@ -87,36 +98,38 @@ export default function ClassesPage() {
             </SheetHeader>
             <div className="space-y-6 py-8">
               <div className="space-y-3">
-                <Label htmlFor="name" className="text-sm font-semibold">Display Name</Label>
-                <Input 
-                  id="name" 
-                  placeholder="e.g., Standard 8B" 
-                  className="rounded-xl h-12"
-                  value={newClass.name}
-                  onChange={(e) => setNewClass({ ...newClass, name: e.target.value })}
-                />
+                <Label className="text-sm font-semibold">Display Name</Label>
+                <div className="h-12 rounded-xl border border-slate-200 bg-slate-50 flex items-center px-4 text-slate-700 font-medium">
+                  {newClass.name || "Auto-generated"}
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-3">
-                  <Label htmlFor="standard" className="text-sm font-semibold">Standard</Label>
-                  <Input 
-                    id="standard" 
-                    type="number" 
-                    placeholder="1-8" 
-                    className="rounded-xl h-12"
-                    value={newClass.standard}
-                    onChange={(e) => setNewClass({ ...newClass, standard: e.target.value })}
-                  />
+                  <Label className="text-sm font-semibold">Class (Standard)</Label>
+                  <Select value={newClass.standard} onValueChange={(val) => setNewClass({ ...newClass, standard: val })}>
+                    <SelectTrigger className="rounded-xl h-12 border-slate-200">
+                      <SelectValue placeholder="Select Standard" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      {[1, 2, 3, 4, 5, 6, 7, 8].map(std => (
+                        <SelectItem key={std} value={std.toString()}>Standard {std}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-3">
-                  <Label htmlFor="stream" className="text-sm font-semibold">Stream</Label>
-                  <Input 
-                    id="stream" 
-                    placeholder="A, B, Blue..." 
-                    className="rounded-xl h-12"
-                    value={newClass.stream}
-                    onChange={(e) => setNewClass({ ...newClass, stream: e.target.value })}
-                  />
+                  <Label className="text-sm font-semibold">Stream</Label>
+                  <Select value={newClass.stream} onValueChange={(val) => setNewClass({ ...newClass, stream: val })}>
+                    <SelectTrigger className="rounded-xl h-12 border-slate-200">
+                      <SelectValue placeholder="Select Stream" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      <SelectItem value="None">None</SelectItem>
+                      {["A", "B", "C", "D", "E"].map(stream => (
+                        <SelectItem key={stream} value={stream}>Stream {stream}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="space-y-3">
